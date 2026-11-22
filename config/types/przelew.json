@@ -1,0 +1,72 @@
+{
+  "type_id": "przelew",
+  "nazwa": "Potwierdzenie przelewu",
+  "opis": "Potwierdzenie przelewu bankowego (dowód uiszczenia wpisu od odwołania lub opłaty skarbowej od pełnomocnictwa). Prawnie musi wykazać rachunek nadawcy, rachunek odbiorcy, kwotę i datę operacji.",
+  "classification": {
+    "priority": 3,
+    "uzasadnienie": "Dwa numery rachunku (nadawca, odbiorca), kwota i data operacji; dokument bankowy nie cytuje przepisów.",
+    "rule": [
+      ["nrb", ">=", 2],
+      ["kwoty", ">=", 1],
+      ["daty", ">=", 1],
+      ["art", "<=", 1]
+    ]
+  },
+  "extraction": {
+    "pages": "1,last",
+    "uwagi": [
+      "Nagłówek banku należy do banku; dane nadawcy (z_rachunku) i odbiorcy (na_rachunek) bierz wyłącznie z odpowiednio opisanych sekcji.",
+      "Wpis od odwołania: odbiorca UZP, rachunek 60101010100081362231000000. Opłata skarbowa od pełnomocnictwa: Urząd m.st. Warszawy, 21103015080000000550000070.",
+      "z_rachunku i na_rachunek: przepisz numer rachunku dokładnie jak w dokumencie (zachowaj prefiks kraju np. 'PL', 'DE' itp., jeśli występuje; usuń jedynie spacje i myślniki; nie dodawaj ani nie usuwaj prefiksu).",
+      "data_operacji: data realizacji/wykonania przelewu (nie data wydruku); kwota: liczba; tytul: dosłownie z pola tytuł/opis w jednej linii, bez etykiety pola; numer_transakcji: tylko wartość z etykietą numeru transakcji / referencyjnego, brak → null."
+    ]
+  },
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "przelew",
+    "title": "Potwierdzenie przelewu",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["przelew_bankowy"],
+    "properties": {
+      "przelew_bankowy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["data_operacji", "kwota", "na_rachunek", "numer_transakcji", "tytul", "z_rachunku"],
+        "properties": {
+          "data_operacji": {
+            "type": ["string", "null"],
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Data wykonania / realizacji operacji (ISO YYYY-MM-DD). Nie data wydruku ani wygenerowania potwierdzenia."
+          },
+          "kwota": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "description": "Kwota operacji jako liczba (np. 10000.00). Nie opłata/prowizja banku (zwykle 0,00)."
+          },
+          "na_rachunek": {
+            "type": ["string", "null"],
+            "x-normalizer": "iban",
+            "pattern": "^(?:[A-Z]{2}[A-Z0-9]{13,32}|\\d{26})$",
+            "description": "Rachunek odbiorcy (uznawany / beneficjenta): numer bez spacji; jeśli w dokumencie występuje prefiks kraju (np. 'PL', 'DE'), zachowaj go (np. 'PL60101010100081362231000000')."
+          },
+          "numer_transakcji": {
+            "type": ["string", "null"],
+            "description": "Numer referencyjny / identyfikator operacji, jeśli występuje; w przeciwnym razie null."
+          },
+          "tytul": {
+            "type": ["string", "null"],
+            "description": "Tytuł przelewu dosłownie, w jednej linii (połączone łamania wierszy)."
+          },
+          "z_rachunku": {
+            "type": ["string", "null"],
+            "x-normalizer": "iban",
+            "pattern": "^(?:[A-Z]{2}[A-Z0-9]{13,32}|\\d{26})$",
+            "description": "Rachunek nadawcy (obciążany / zleceniodawcy): numer bez spacji; jeśli w dokumencie występuje prefiks kraju (np. 'PL', 'DE'), zachowaj go."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "type_id": "pelnomocnictwo",
+  "nazwa": "Pełnomocnictwo",
+  "opis": "Pełnomocnictwo do reprezentowania wykonawcy w postępowaniu odwoławczym przed KIO (art. 516 ust. 2 pkt 3 Pzp).",
+  "classification": {
+    "priority": 2,
+    "uzasadnienie": "Identyfikator mocodawcy i imię i nazwisko w osobnej linii (podpisujący – odporne na OCR, które gubi linie z kropek); co najwyżej 1 rachunek (stopka papieru firmowego) i 1 cytowanie przepisu.",
+    "rule": [
+      ["id_10_9", ">=", 1],
+      ["linie_nazwisk", ">=", 1],
+      ["nrb", "<=", 1],
+      ["art", "<=", 1]
+    ]
+  },
+  "extraction": {
+    "pages": "1-2,last",
+    "consistency_rules": [
+      {
+        "rule": "fallback_from_single_item",
+        "list_field": "mocodawca",
+        "object_field": "data",
+        "when_field": "typ",
+        "equals": "osoba_fizyczna",
+        "target_field": "imie_nazwisko",
+        "source_list": "podpisujacy",
+        "source_field": "imie_nazwisko",
+        "must_contain_in": "nazwa"
+      }
+    ],
+    "uwagi": [
+      "Rozdzielenie ról: mocodawca to podmiot udzielający pełnomocnictwa; pelnomocnicy to osoby, którym udzielono pełnomocnictwa; podpisujacy to osoby podpisane w imieniu mocodawcy (pod podpisem, z funkcją np. Prezes Zarządu) — nie wpisuj pełnomocników jako podpisujących, chyba że wprost podpisują jako mocodawca.",
+      "mocodawca.data.nazwa: dokładnie jak w dokumencie (również dla JDG, bez dopasowywania do CEIDG) – zachowaj formę prawną, skróty (np. 'Sp. z o.o.') i wielkość liter.",
+      "pesel: tylko gdy przy pełnomocniku wprost podano PESEL; numer dowodu, numer wpisu na listę itp. → null."
+    ]
+  },
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "pelnomocnictwo",
+    "title": "Pełnomocnictwo",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["mocodawca", "pelnomocnicy"],
+    "properties": {
+      "mocodawca": {
+        "type": "array",
+        "minItems": 1,
+        "description": "Mocodawca – podmiot udzielający pełnomocnictwa. Może być więcej niż 1 (konsorcjum wspólnie).",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["data", "podpisujacy"],
+          "properties": {
+            "data": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["imie_nazwisko", "krs", "nazwa", "nip", "typ"],
+              "properties": {
+                "imie_nazwisko": {
+                  "type": ["string", "null"],
+                  "x-normalizer": "person_name",
+                  "description": "Imię i nazwisko mocodawcy, jeśli jest osobą fizyczną (np. JDG). W przypadku osoby prawnej: null."
+                },
+                "krs": {
+                  "type": ["string", "null"],
+                  "pattern": "^\\d{10}$",
+                  "x-normalizer": "krs",
+                  "description": "Numer KRS mocodawcy będącego osobą prawną (10 cyfr)."
+                },
+                "nazwa": {
+                  "type": ["string", "null"],
+                  "x-normalizer": "entity_name",
+                  "description": "Pełna nazwa mocodawcy."
+                },
+                "nip": {
+                  "type": ["string", "null"],
+                  "pattern": "^\\d{10}$",
+                  "description": "Numer NIP mocodawcy (10 cyfr, bez kresek)."
+                },
+                "typ": {
+                  "type": ["string", "null"],
+                  "enum": ["osoba_prawna", "osoba_fizyczna", null],
+                  "description": "Typ mocodawcy: \"osoba_prawna\" (także spółki osobowe: sp. j., sp. k.) lub \"osoba_fizyczna\" (np. jednoosobowa działalność gospodarcza)."
+                }
+              }
+            },
+            "podpisujacy": {
+              "type": "array",
+              "description": "Osoby podpisujące w imieniu mocodawcy.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["imie_nazwisko"],
+                "properties": {
+                  "imie_nazwisko": {
+                    "type": "string",
+                    "x-normalizer": "person_name",
+                    "description": "Imię i nazwisko podpisującego w mianowniku, bez tytułów i funkcji."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "pelnomocnicy": {
+        "type": "array",
+        "minItems": 1,
+        "description": "Osoby otrzymujące pełnomocnictwo.",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["imie_nazwisko", "pesel"],
+          "properties": {
+            "imie_nazwisko": {
+              "type": "string",
+              "x-normalizer": "person_name",
+              "description": "Imię i nazwisko pełnomocnika w mianowniku, bez tytułów zawodowych."
+            },
+            "pesel": {
+              "type": ["string", "null"],
+              "pattern": "^\\d{11}$",
+              "description": "PESEL pełnomocnika jako tekst (11 cyfr), jeśli podany; w przeciwnym razie null. Uwaga: przykład w oczekiwane-json pokazuje liczbę, dane referencyjne – tekst."
+            }
+          }
+        }
+      }
+    }
+  }
+}

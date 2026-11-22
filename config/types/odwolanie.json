@@ -1,0 +1,139 @@
+{
+  "type_id": "odwolanie",
+  "nazwa": "Odwołanie do Prezesa KIO",
+  "opis": "Odwołanie wnoszone do Prezesa Krajowej Izby Odwoławczej (art. 516 Pzp).",
+  "classification": {
+    "priority": 1,
+    "uzasadnienie": "Art. 516 ust. 1 Pzp: dwie strony z adresami (pkt 1–2) i identyfikatorami (pkt 4), e-mail (pkt 1–2), podstawa prawna (pkt 10).",
+    "rule": [
+      ["kod_poczt", ">=", 2],
+      ["id_10_9", ">=", 2],
+      ["email", ">=", 1],
+      ["art", ">=", 2]
+    ]
+  },
+  "extraction": {
+    "pages": "1-3,last",
+    "czynnosc_powod": {
+      "1": "Decyzja o odrzuceniu oferty",
+      "2": "Ogłoszenie wyboru oferty",
+      "3": "Decyzja o wykluczeniu wykonawcy",
+      "4": "Publikacja specyfikacji warunków zamówienia (SWZ)",
+      "5": "Modyfikacja treści SWZ",
+      "6": "Odpowiedzi/wyjaśnienia do SWZ",
+      "7": "Zaniechanie odrzucenia oferty",
+      "8": "Zaniechanie wykluczenia wykonawcy",
+      "9": "Decyzja o unieważnieniu postępowania",
+      "10": "Zaniechanie unieważnienia postępowania",
+      "11": "Opis przedmiotu zamówienia (OPZ)",
+      "12": "Projektowane postanowienia umowy"
+    },
+    "lookup_bindings": [
+      {
+        "table": "czynnosc_powod",
+        "id_field": "czynnosc_powod_id",
+        "label_field": "czynnosc_opis"
+      }
+    ],
+    "consistency_rules": [
+      {
+        "rule": "clear_object_when",
+        "list_field": "Odwolujacy",
+        "when_field": "przez-pelnomocnika",
+        "equals": 0,
+        "target_field": "pelnomocnik"
+      }
+    ],
+    "uwagi": [
+      "czynnosc_powod_id i czynnosc_dzien: weź PIERWSZĄ zaskarżoną czynność – pkt 1 listy ('odwołanie wobec: 1. …', 'polegających na: 1) …') albo zdanie 'Zamawiający w dniu … [czynność]'. Kod wynika z czynności: odrzucił ofertę 1, wybrał ofertę 2, wykluczył 3, opublikował SWZ 4, zmienił SWZ 5, odpowiedział na pytania / wyjaśnił SWZ 6, NIE odrzucił 7, NIE wykluczył 8, unieważnił 9, NIE unieważnił 10, opis przedmiotu zamówienia 11, projektowane postanowienia umowy 12. Kod 2 wybieraj tylko dla samego wyboru/punktacji (jeśli zarzut dotyczy zaniechania odrzucenia lub wykluczenia konkurenta → 7 lub 8), a przy zarzucie dot. OPZ (11) lub projektu umowy (12) wybierz kod szczegółowy zamiast 4. Przepisy (art.) i tytuły zarzutów nie decydują. czynnosc_dzien = data z tego samego miejsca; jeśli niejednoznaczne → null.",
+      "data i miejscowosc: WYŁĄCZNIE z jawnej linii nagłówkowej pisma (np. 'Gdańsk, dnia 3 września 2026 r.'). Jeśli w dokumencie NIE MA takiej linii nagłówkowej, OBA pola (data i miejscowosc) MUSZĄ być null — NIGDY nie kopiuj czynnosc_dzien, nie wymyślaj daty i nie bierz 'Warszawa' z adresu Prezesa KIO (ul. Postępu 17A, 02-676 Warszawa) ani z adresu strony.",
+      "przez-pelnomocnika: ustaw 1 i wypełnij pelnomocnik WYŁĄCZNIE gdy dokument wprost wskazuje reprezentację przez imiennie wskazanego pełnomocnika ('reprezentowany przez', 'pełnomocnik'); nie wnioskuj tego z samego papieru firmowego, stopki czy podpisu. W przeciwnym razie ustaw 0 i pelnomocnik=null. Dla pelnomocnik: imie_nazwisko to osoba fizyczna, a nazwa i mail to kancelaria z adresu do korespondencji tylko jeśli są z nim powiązane.",
+      "prowadzacy_postepowanie: jeden Zamawiający → null.",
+      "Numery BZP / TED / postępowania – tylko zaskarżonego postępowania ('dotyczy:'), nie innych przytaczanych w treści. Dla numer_ted ogłoszenia w 'Dzienniku Urzędowym Unii Europejskiej' / 'Dz.U. UE' / TED zapisane jako 'YYYY/S NNN-NNNNNN' zamień na 'NNNNNN-YYYY' (np. '2026/S 224-429185' → '429185-2026').",
+      "Konsorcjum → dane Lidera; kilku pełnomocników → pierwszy."
+    ]
+  },
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "odwolanie",
+    "title": "Odwołanie do Prezesa KIO",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["OdwolanieKIO", "Odwolujacy", "Zamawiajacy", "ZamowieniePubliczne"],
+    "$defs": {
+      "krs": {"type": ["string", "null"], "pattern": "^\\d{10}$", "x-normalizer": "krs"},
+      "nip": {"type": ["string", "null"], "pattern": "^\\d{10}$"},
+      "regon": {"type": ["string", "null"], "pattern": "^(\\d{9}|\\d{14})$"},
+      "data_iso": {"type": ["string", "null"], "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"}
+    },
+    "properties": {
+      "OdwolanieKIO": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["data", "czynnosc_dzien", "czynnosc_powod_id", "czynnosc_opis", "miejscowosc"],
+        "properties": {
+          "data": {"$ref": "#/$defs/data_iso", "description": "Data z nagłówka pierwszej strony, z linii typu 'X, dnia DD.MM.RRRR'. Brak takiej linii → null."},
+          "czynnosc_dzien": {"$ref": "#/$defs/data_iso", "description": "Data czynności uruchamiającej bieg terminu odwołania dla pierwszego zarzutu (ISO YYYY-MM-DD). Jeśli brak wiarygodnej daty dla pierwszego zarzutu → null."},
+          "czynnosc_powod_id": {"type": ["integer", "null"], "minimum": 1, "maximum": 12, "description": "Identyfikator powodu odwołania 1–12 (bez zera wiodącego), ustalany WYŁĄCZNIE na podstawie pierwszego zarzutu."},
+          "czynnosc_opis": {"type": ["string", "null"], "description": "Kanoniczny opis zaskarżonej czynności zgodny 1:1 z czynnosc_powod_id (słownik w extraction.czynnosc_powod)."},
+          "miejscowosc": {"type": ["string", "null"], "description": "Miejscowość z nagłówka pierwszej strony, z linii typu 'X, dnia ...' albo 'X DD.MM.RRRR'. Brak takiej linii → null."}
+        }
+      },
+      "Odwolujacy": {
+        "type": "array",
+        "minItems": 1,
+        "description": "Odwołujący. Przy konsorcjum – Lider konsorcjum.",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["krs", "nazwa", "nip", "regon", "przez-pelnomocnika", "pelnomocnik"],
+          "properties": {
+            "krs": {"$ref": "#/$defs/krs", "description": "KRS Odwołującego lub Lidera konsorcjum (jeśli występuje)."},
+            "nazwa": {"type": ["string", "null"], "x-normalizer": "entity_name", "description": "Pełna nazwa podmiotu opisanego jako Odwołujący. Przy konsorcjum – nazwa Lidera."},
+            "nip": {"$ref": "#/$defs/nip", "description": "NIP Odwołującego lub Lidera konsorcjum (jeśli występuje)."},
+            "regon": {"$ref": "#/$defs/regon", "description": "REGON Odwołującego lub Lidera konsorcjum (jeśli występuje)."},
+            "przez-pelnomocnika": {"type": "integer", "enum": [0, 1], "description": "1 – odwołanie wnoszone przez pełnomocnika, 0 – nie."},
+            "pelnomocnik": {
+              "type": ["object", "null"],
+              "additionalProperties": false,
+              "required": ["imie_nazwisko", "nazwa", "mail"],
+              "properties": {
+                "imie_nazwisko": {"type": ["string", "null"], "x-normalizer": "person_name", "description": "Imię i nazwisko pełnomocnika odwołującego (pierwszy wymieniony) w mianowniku, bez tytułu zawodowego."},
+                "nazwa": {"type": ["string", "null"], "x-normalizer": "entity_name", "description": "Nazwa podmiotu zatrudniającego pełnomocnika (kancelaria z adresu do korespondencji)."},
+                "mail": {"type": ["string", "null"], "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", "description": "Adres e-mail kontaktowy pełnomocnika (nie odwołującego)."}
+              }
+            }
+          }
+        }
+      },
+      "Zamawiajacy": {
+        "type": "array",
+        "minItems": 1,
+        "description": "Zamawiający (jeden lub więcej).",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["krs", "nazwa", "nip", "regon", "prowadzacy_postepowanie"],
+          "properties": {
+            "krs": {"$ref": "#/$defs/krs", "description": "KRS Zamawiającego (jeśli jawnie podany przy Zamawiającym)."},
+            "nazwa": {"type": ["string", "null"], "x-normalizer": "entity_name", "description": "Pełna nazwa podmiotu opisanego jako Zamawiający."},
+            "nip": {"$ref": "#/$defs/nip", "description": "NIP Zamawiającego (jeśli jawnie podany)."},
+            "regon": {"$ref": "#/$defs/regon", "description": "REGON Zamawiającego (jeśli jawnie podany)."},
+            "prowadzacy_postepowanie": {"enum": [null, 0, 1], "description": "null – jeden zamawiający lub brak informacji; 1 – przy kilku zamawiających ten jest oznaczony jako prowadzący/lider postępowania; 0 – przy kilku zamawiających ten nie jest prowadzącym."}
+          }
+        }
+      },
+      "ZamowieniePubliczne": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["numer_bzp", "numer_postepowania", "numer_ted", "tytul"],
+        "properties": {
+          "numer_bzp": {"type": ["string", "null"], "pattern": "^\\d{4}/BZP\\d{8}(/\\d{2})?$", "description": "Numer ogłoszenia w BZP, format 'YYYY/BZP########' (opcjonalnie '/##' dla korekt), bez spacji. NIE wpisywać numerów TED."},
+          "numer_postepowania": {"type": ["string", "null"], "description": "Numer referencyjny / nr postępowania / znak sprawy Zamawiającego (ID po etykiecie typu 'nr referencyjny:', 'znak sprawy:'), np. 'ZP.039.2025', 'DZP.260.11.2025'. NIE wpisywać numerów ogłoszeń BZP ani TED."},
+          "numer_ted": {"type": ["string", "null"], "pattern": "^\\d{6}-\\d{4}$", "description": "Numer ogłoszenia w TED / Dzienniku Urzędowym Unii Europejskiej (Dz.U. UE) w formacie 'NNNNNN-YYYY'. Zapis 'YYYY/S ###-NNNNNN' zamienić na 'NNNNNN-YYYY' (np. '2026/S 224-429185' → '429185-2026')."},
+          "tytul": {"type": ["string", "null"], "x-normalizer": "unquoted_text", "description": "Tytuł zamówienia lub postępowania (bez cudzysłowów)."}
+        }
+      }
+    }
+  }
+}

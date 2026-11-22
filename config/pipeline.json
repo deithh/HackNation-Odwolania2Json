@@ -1,0 +1,100 @@
+{
+  "runtime": {
+    "input_dir": "input",
+    "output_dir": "output",
+    "default_workers": 4,
+    "cache_dir": "cache",
+    "types_dir": "config/types",
+    "prompts_file": "config/prompts.json"
+  },
+  "page_analysis": {
+    "classification_pages": "1-3,last",
+    "min_chars_text_page": 50,
+    "min_image_coverage_scan": 0.25,
+    "min_text_quality": 0.85,
+    "invisible_text_share": 0.5
+  },
+  "ocr": {
+    "engine": "rapid",
+    "force": false,
+    "render_width_px": 1654,
+    "deskew": true,
+    "deskew_max_angle": 6.0,
+    "deskew_min_angle": 0.35,
+    "rapid": {
+      "ocr_version": "PPOCRV5",
+      "model_type": "MOBILE",
+      "lang_rec": "LATIN",
+      "use_cls": false,
+      "intra_op_num_threads": 4,
+      "inter_op_num_threads": 1,
+      "enable_cpu_mem_arena": true
+    }
+  },
+  "llm": {
+    "base_url": "https://api.regolo.ai/v1",
+    "model": "qwen3.5-9b",
+    "timeout": 300.0,
+    "retries": 4,
+    "thinking_kwarg": "true"
+  },
+  "classification": {
+    "method": "decider",
+    "fallback_to_rules": true,
+    "min_choice_prob": 0.55,
+    "min_noul_prob": 0.0,
+    "min_llm_confidence": 0.60,
+    "max_chars": 12000,
+    "decider": {
+      "url": "https://api.regolo.ai/v1/systemone",
+      "model": "clef-flash",
+      "timeout": 120.0,
+      "connect_timeout": 20.0,
+      "retries": 3
+    },
+    "llm": {
+      "temperature": 0.0,
+      "max_tokens": 256
+    }
+  },
+  "extraction": {
+    "temperature": 0.0,
+    "max_tokens": 3000,
+    "retries": 4
+  },
+  "postprocessing": {
+    "null_strings": ["", "null", "none", "brak", "brak danych", "n/a", "nd", "nie dotyczy", "-", "–", "—"],
+    "ted_year_min": 2000,
+    "ted_year_max": 2035,
+    "nrb_max_edit_distance": 4,
+    "nrb_reject_distance": 6
+  },
+  "evaluation": {
+    "fuzzy_threshold": 80.0,
+    "long_string_fields": [
+      "Odwolujacy[].pelnomocnik.nazwa",
+      "przelew_bankowy.tytul",
+      "Odwolujacy[].nazwa",
+      "Zamawiajacy[].nazwa",
+      "ZamowieniePubliczne.tytul"
+    ]
+  },
+  "optimization": {
+    "reflection_base_url": "https://api.regolo.ai/v1/chat/completions",
+    "reflection_model": "deepseek-v4.1-flash",
+    "reflection_temperature": 0.6,
+    "reflection_max_tokens": 16384,
+    "reflection_timeout": 240.0,
+    "reflection_reasoning": true,
+    "train_ratio": 0.5,
+    "seed": 42,
+    "max_metric_calls": 60,
+    "minibatch_size": 3,
+    "max_workers": 4
+  },
+  "web": {
+    "host": "127.0.0.1",
+    "port": 8000,
+    "page_render_width_px": 1200
+  }
+}

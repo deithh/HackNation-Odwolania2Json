@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Odwołania2JSON</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.18/lib/codemirror.min.css" />
+  <link rel="stylesheet" href="/app.css" />
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.18/lib/codemirror.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.18/mode/javascript/javascript.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="topbar-rail-btn" id="btnToggleLeft" title="Pokaż lub ukryj listę dokumentów" aria-label="Lista dokumentów">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="brand">
+        <span class="brand-name">Odwołania2JSON</span>
+      </div>
+    </div>
+
+    <nav class="nav-segment" role="tablist">
+      <button class="nav-btn active" data-tab="analyze" role="tab">Dokumenty</button>
+      <button class="nav-btn" data-tab="types" role="tab">Typy dokumentów</button>
+      <button class="nav-btn" data-tab="config" role="tab">Konfiguracja</button>
+    </nav>
+
+    <div class="topbar-right">
+      <span class="sys-chip" id="sysMeta">Ładowanie…</span>
+      <button class="topbar-drawer-btn" id="btnToggleRight" title="Wysuń lub schowaj panel wyników">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M10.5 2.5v11M3 2.5h10a.5.5 0 01.5.5v10a.5.5 0 01-.5.5H3a.5.5 0 01-.5-.5V3a.5.5 0 01.5-.5z" stroke="currentColor" stroke-width="1.4"/></svg>
+        <span>Wyniki</span>
+        <span class="topbar-count" id="hlBadgeTop">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== TAB 1: DOKUMENTY ==================== -->
+  <div id="tab-analyze" class="shell active">
+    <aside class="left-rail" id="leftRail">
+      <div class="rail-top">
+        <input type="file" id="fileInput" accept=".pdf" multiple hidden />
+        <button class="btn btn-primary btn-full" id="btnUpload">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 11V3m0 0L5 6m3-3l3 3M2.5 12.5h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Wgraj PDF
+        </button>
+        <div class="rail-subactions">
+          <button class="btn btn-ghost btn-xs" id="btnLoadInput" title="Wczytaj pliki PDF z katalogu input">Katalog input</button>
+          <button class="btn btn-ghost btn-xs" id="btnAnalyzeAll">Analizuj wszystkie</button>
+        </div>
+      </div>
+
+      <div class="rail-section-label">
+        <span>Pliki</span>
+        <span class="muted-num" id="docCount">0</span>
+      </div>
+
+      <div class="doc-list" id="docList">
+        <div class="empty-note">Przeciągnij pliki PDF lub kliknij <strong>Wgraj PDF</strong>.</div>
+      </div>
+
+      <div class="rail-footer">
+        <button class="btn btn-outline btn-full btn-sm" id="btnExportZip" disabled>Eksportuj ZIP</button>
+      </div>
+    </aside>
+
+    <main class="stage-wrap" id="dropTarget">
+      <div class="stage-bar">
+        <div class="stage-bar-left">
+          <span class="doc-heading" id="pdfTitle">Brak wybranego dokumentu</span>
+          <span class="tag hidden" id="pdfTypeChip"></span>
+          <span class="skew-note hidden" id="pdfSkewChip"></span>
+        </div>
+
+        <div class="stage-bar-right">
+          <label class="chk" title="Wymuś lokalny RapidOCR nawet dla PDF z warstwą tekstową">
+            <input type="checkbox" id="chkForceOcr" />
+            <span>Wymuś OCR</span>
+          </label>
+          <button class="btn btn-cerulean btn-sm" id="btnAnalyzeOne" disabled>Analizuj</button>
+          <span class="sep"></span>
+          <label class="chk">
+            <input type="checkbox" id="chkHighlights" checked />
+            <span>Zaznaczenia</span>
+          </label>
+          <span class="sep"></span>
+          <div class="zoom-pill">
+            <button class="zoom-btn" id="btnZoomOut" title="Pomniejsz">−</button>
+            <button class="zoom-readout" id="btnZoomReset" title="Dopasuj szerokość">Dopasuj</button>
+            <button class="zoom-btn" id="btnZoomIn" title="Powiększ">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pdf-scroll" id="pdfCanvas">
+        <div class="stage-empty">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1282A2" stroke-width="1.4"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+          <h3>Podgląd dokumentu</h3>
+          <p>Przeciągnij plik PDF w dowolne miejsce okna lub użyj <strong>Wgraj PDF</strong>, a następnie uruchom analizę.</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Full-height collapsed right edge strip (shown when right drawer is closed) -->
+    <button class="right-edge-strip hidden" id="edgePullTab" title="Wysuń panel wyników">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="strip-label">Wyniki</span>
+      <span class="strip-count" id="hlBadgeStrip">0</span>
+    </button>
+
+    <aside class="right-drawer open" id="rightDrawer">
+      <div class="drawer-head">
+        <div class="drawer-tabs">
+          <button class="dtab active" data-subtab="fields">Pola <span class="dtab-num" id="hlBadge">0</span></button>
+          <button class="dtab" data-subtab="json">JSON</button>
+          <button class="dtab" data-subtab="audit">Audyt</button>
+        </div>
+        <button class="icon-btn" id="btnCloseRight" title="Schowaj panel wyników">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+
+      <div id="subtab-fields" class="dpanel active">
+        <div class="dpanel-search">
+          <input type="text" id="fieldSearch" placeholder="Szukaj pola lub wartości…" />
+        </div>
+        <div class="dpanel-scroll" id="fieldsContainer">
+          <div class="empty-note">Uruchom analizę, aby wyświetlić wyekstrahowane pola.</div>
+        </div>
+      </div>
+
+      <div id="subtab-json" class="dpanel">
+        <div class="dpanel-bar">
+          <button class="btn btn-ghost btn-xs" id="btnCopyJson" disabled>Kopiuj</button>
+          <button class="btn btn-primary btn-xs" id="btnDownloadJson" disabled>Pobierz JSON</button>
+        </div>
+        <pre class="code-pane" id="jsonViewer">{}</pre>
+      </div>
+
+      <div id="subtab-audit" class="dpanel">
+        <div class="dpanel-scroll" id="auditContainer">
+          <div class="empty-note">Ślad audytowy pojawi się po analizie dokumentu.</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ==================== TAB 2: TYPY DOKUMENTÓW ==================== -->
+  <div id="tab-types" class="types-shell">
+    <aside class="types-rail" id="typesRail">
+      <div class="rail-top">
+        <sl-button variant="primary" size="small" id="btnNewType" style="width: 100%;">
+          <sl-icon slot="prefix" name="plus-lg"></sl-icon>
+          Nowy typ dokumentu
+        </sl-button>
+      </div>
+
+      <div class="types-rail-scroll">
+        <div class="rail-section-label">
+          <span>Aktywne typy</span>
+          <sl-tag variant="danger" size="small" pill id="typesValidPill" class="hidden">Błędy</sl-tag>
+        </div>
+        <div class="types-list" id="typesList"></div>
+
+        <div class="examples-block">
+          <div class="rail-section-label">
+            <span>Przykłady do włączenia</span>
+          </div>
+          <div class="types-list" id="examplesList"></div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="types-stage">
+      <div class="stage-bar">
+        <div class="stage-bar-left">
+          <span class="doc-heading" id="editorTitle">Wybierz typ dokumentu</span>
+          <span class="tag hidden" id="editorTypeTag"></span>
+        </div>
+
+        <div class="stage-bar-right">
+          <sl-radio-group size="small" value="preview" id="typeModeSwitch">
+            <sl-radio-button value="preview">Podgląd schematu</sl-radio-button>
+            <sl-radio-button value="json">Edytor JSON</sl-radio-button>
+            <sl-radio-button value="infer">Generuj z pliku</sl-radio-button>
+          </sl-radio-group>
+          <span class="sep"></span>
+          <sl-button variant="danger" outline size="small" id="btnDeleteType" class="hidden">Usuń</sl-button>
+          <sl-button variant="primary" size="small" id="btnSaveType">
+            <sl-icon slot="prefix" name="check2"></sl-icon>
+            Zapisz i aktywuj
+          </sl-button>
+        </div>
+      </div>
+
+      <div class="error-banner hidden" id="editorErrors" style="margin: 10px 18px 0;"></div>
+
+      <!-- Mode 1: Human-readable Schema Overview -->
+      <div id="tmode-preview" class="tmode-panel active">
+        <div class="schema-overview" id="schemaOverview"></div>
+      </div>
+
+      <!-- Mode 2: CodeMirror JSON Editor -->
+      <div id="tmode-json" class="tmode-panel">
+        <div class="cm-host" id="jsonEditorHost">
+          <textarea id="typeJsonEditor" class="json-fallback" spellcheck="false"></textarea>
+        </div>
+      </div>
+
+      <!-- Mode 3: Infer from Sample File & Prompt Optimization (GEPA) -->
+      <div id="tmode-infer" class="tmode-panel">
+        <div class="settings-sheet">
+          <div class="settings-section">
+            <div class="settings-aside">
+              <h3>Generowanie z przykładu</h3>
+              <p>Wgraj wzorcowy plik <code>.json</code> lub przykładowy <code>.pdf</code>, aby automatycznie utworzyć definicję typu i schemat JSON.</p>
+            </div>
+            <div class="settings-card">
+              <div class="setting-row">
+                <sl-input id="inferTypeId" label="Identyfikator typu" size="small" placeholder="wyrok_kio"></sl-input>
+              </div>
+              <div class="setting-row">
+                <sl-input id="inferName" label="Nazwa wyświetlana" size="small" placeholder="Wyrok KIO"></sl-input>
+              </div>
+              <div class="setting-row">
+                <span class="row-label">Plik wzorcowy</span>
+                <div class="file-picker-row">
+                  <input type="file" id="inferFile" accept=".json,.pdf" hidden />
+                  <sl-button variant="default" size="small" id="btnPickInferFile">
+                    <sl-icon slot="prefix" name="upload"></sl-icon>
+                    Wybierz .json lub .pdf
+                  </sl-button>
+                  <span class="file-picked-name" id="inferFileName">Nie wybrano pliku</span>
+                </div>
+              </div>
+              <div class="setting-footer">
+                <span class="infer-msg hidden" id="inferStatus"></span>
+                <sl-button variant="primary" size="small" id="btnInferType">Generuj definicję</sl-button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-aside">
+              <h3>Optymalizacja promptu</h3>
+              <p>Automatycznie poprawia reguły ekstrakcji metodą GEPA na parach plików <code>.pdf</code> + <code>.json</code> z użyciem aktualnie skonfigurowanego modelu LLM.</p>
+            </div>
+            <div class="settings-card">
+              <div class="setting-row setting-row-grid">
+                <div class="row-copy">
+                  <span class="row-label">Typ dokumentu</span>
+                  <span class="row-help">Docelowa definicja, której reguły zostaną zoptymalizowane</span>
+                </div>
+                <sl-select id="optTypeSelect" size="small" hoist></sl-select>
+              </div>
+              <div class="setting-row">
+                <span class="row-label">Pary plików treningowych</span>
+                <div class="file-picker-row">
+                  <input type="file" id="optFiles" accept=".pdf,.json" multiple hidden />
+                  <sl-button variant="default" size="small" id="btnPickOptFiles">
+                    <sl-icon slot="prefix" name="files"></sl-icon>
+                    Wybierz .pdf i .json
+                  </sl-button>
+                  <span class="file-picked-name" id="optFilesName">Nie wybrano plików</span>
+                </div>
+              </div>
+              <div class="setting-row">
+                <sl-input id="optDataDir" label="lub ścieżka lokalnego katalogu z próbkami" size="small" placeholder="np. zadanie/dane"></sl-input>
+              </div>
+              <div class="setting-row setting-row-grid">
+                <div class="row-copy">
+                  <span class="row-label">Budżet wywołań metryki</span>
+                  <span class="row-help">Liczba ewaluacji wykonywanych podczas poszukiwania reguł</span>
+                </div>
+                <sl-input id="optBudget" type="number" size="small" value="20" min="4" max="120" step="2"></sl-input>
+              </div>
+              <div class="setting-row setting-row-toggle">
+                <div class="row-copy">
+                  <span class="row-label">Zapisz wynik automatycznie</span>
+                  <span class="row-help">Aktualizuje plik typu, jeśli wynik F1 nie jest gorszy od bazowego</span>
+                </div>
+                <sl-switch id="optApply" size="small"></sl-switch>
+              </div>
+              <div class="opt-result-box hidden" id="optResultBox"></div>
+              <div class="setting-footer">
+                <span class="infer-msg hidden" id="optStatus"></span>
+                <sl-button variant="primary" size="small" id="btnRunOptimize">
+                  <sl-icon slot="prefix" name="sliders"></sl-icon>
+                  Uruchom optymalizację
+                </sl-button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ==================== TAB 3: KONFIGURACJA ==================== -->
+  <div id="tab-config" class="config-shell">
+    <div class="settings-sheet">
+      <div class="settings-header">
+        <div>
+          <h2>Konfiguracja</h2>
+          <p>Parametry zapisywane w <code>config/pipeline.json</code>. Klucze API trafiają wyłącznie do lokalnego <code>.env</code> i nigdy nie wracają do przeglądarki.</p>
+        </div>
+        <sl-button variant="primary" size="small" id="btnSaveConfig">
+          <sl-icon slot="prefix" name="check2"></sl-icon>
+          Zapisz zmiany
+        </sl-button>
+      </div>
+
+      <!-- Section 1: LLM -->
+      <section class="settings-section">
+        <div class="settings-aside">
+          <h3>Model LLM</h3>
+          <p>Połączenie z serwerem zgodnym z OpenAI API. Możesz szybko uzupełnić ustawienia wybranego dostawcy.</p>
+          <sl-button-group class="preset-group" label="Presety dostawców">
+            <sl-button size="small" variant="default" data-preset="regolo">Regolo.ai (UE)</sl-button>
+            <sl-button size="small" variant="default" data-preset="ovh">OVHcloud EU</sl-button>
+            <sl-button size="small" variant="default" data-preset="openrouter">OpenRouter</sl-button>
+          </sl-button-group>
+        </div>
+        <div class="settings-card">
+          <div class="setting-row">
+            <sl-input id="cfgLlmUrl" label="Endpoint API" size="small" placeholder="https://oai.endpoints.kepler.ai.cloud.ovh.net/v1"></sl-input>
+          </div>
+          <div class="setting-row">
+            <sl-input id="cfgLlmModel" label="Model" size="small" placeholder="Qwen3.5-9B"></sl-input>
+          </div>
+          <div class="setting-row">
+            <div class="label-with-tag">
+              <span class="row-label">Klucz API LLM</span>
+              <sl-tag id="llmKeyStatus" size="small" pill variant="neutral">Brak</sl-tag>
+            </div>
+            <div class="key-input-row">
+              <sl-input id="cfgLlmKey" type="password" size="small" autocomplete="new-password" placeholder="Wpisz klucz API…"></sl-input>
+              <sl-button size="small" variant="default" id="btnClearLlmKey">Wyczyść</sl-button>
+            </div>
+          </div>
+          <div class="setting-row setting-row-grid">
+            <div class="row-copy">
+              <span class="row-label">Limit czasu żądania</span>
+              <span class="row-help">Maksymalny czas oczekiwania na odpowiedź API</span>
+            </div>
+            <sl-input id="cfgLlmTimeout" type="number" size="small" min="10" max="600" step="10">
+              <span slot="suffix" class="input-unit">s</span>
+            </sl-input>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Classification -->
+      <section class="settings-section">
+        <div class="settings-aside">
+          <h3>Klasyfikacja</h3>
+          <p>Wybór metody rozpoznawania klasy dokumentu przed uruchomieniem ekstrakcji.</p>
+        </div>
+        <div class="settings-card">
+          <div class="setting-row setting-row-grid">
+            <div class="row-copy">
+              <span class="row-label">Metoda klasyfikacji</span>
+              <span class="row-help">Silnik przypisujący dokument do aktywnego typu</span>
+            </div>
+            <sl-select id="cfgClsMethod" size="small" hoist>
+              <sl-option value="decider">Decider API</sl-option>
+              <sl-option value="llm">Model LLM</sl-option>
+              <sl-option value="rules">Reguły lokalne</sl-option>
+            </sl-select>
+          </div>
+          <div class="setting-row setting-row-toggle">
+            <div class="row-copy">
+              <span class="row-label">Awaryjny fallback do reguł</span>
+              <span class="row-help">Uruchamia klasyfikator regułowy wyłącznie w razie awarii API</span>
+            </div>
+            <sl-switch id="cfgFallbackRules" size="small"></sl-switch>
+          </div>
+          <div id="deciderFieldsGroup">
+            <div class="setting-row">
+              <sl-input id="cfgDeciderUrl" label="Endpoint Decider" size="small" placeholder="https://api.regolo.ai/v1/systemone"></sl-input>
+            </div>
+            <div class="setting-row">
+              <sl-input id="cfgDeciderModel" label="Model Decider" size="small" placeholder="clef-flash"></sl-input>
+            </div>
+            <div class="setting-row">
+              <div class="label-with-tag">
+                <span class="row-label">Klucz API Decider / OpenRouter</span>
+                <sl-tag id="orKeyStatus" size="small" pill variant="neutral">Brak</sl-tag>
+              </div>
+              <div class="key-input-row">
+                <sl-input id="cfgOrKey" type="password" size="small" autocomplete="new-password" placeholder="Wpisz klucz API…"></sl-input>
+                <sl-button size="small" variant="default" id="btnClearOrKey">Wyczyść</sl-button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: OCR & Runtime -->
+      <section class="settings-section">
+        <div class="settings-aside">
+          <h3>OCR i przetwarzanie</h3>
+          <p>Ustawienia lokalnego silnika RapidOCR na CPU oraz równoległości przetwarzania.</p>
+        </div>
+        <div class="settings-card">
+          <div class="setting-row setting-row-toggle">
+            <div class="row-copy">
+              <span class="row-label">Automatyczne prostowanie skanów</span>
+              <span class="row-help">Koryguje przekrzywienie stron przed OCR oraz w podglądzie</span>
+            </div>
+            <sl-switch id="cfgDeskew" size="small"></sl-switch>
+          </div>
+          <div class="setting-row setting-row-grid">
+            <div class="row-copy">
+              <span class="row-label">Szerokość renderu OCR</span>
+              <span class="row-help">Rozdzielczość pozioma obrazu strony przekazywanego do OCR</span>
+            </div>
+            <sl-input id="cfgRenderWidth" type="number" size="small" min="800" max="3200" step="50">
+              <span slot="suffix" class="input-unit">px</span>
+            </sl-input>
+          </div>
+          <div class="setting-row setting-row-grid">
+            <div class="row-copy">
+              <span class="row-label">Równoległe procesy</span>
+              <span class="row-help">Domyślna liczba wątków w przetwarzaniu wsadowym</span>
+            </div>
+            <sl-input id="cfgWorkers" type="number" size="small" min="1" max="16" step="1"></sl-input>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Top-level floating popover -->
+  <div id="hlPopover" class="hl-popover hidden">
+    <div class="hl-pop-field" id="hlPopField"></div>
+    <div class="hl-pop-val" id="hlPopVal"></div>
+  </div>
+
+  <div id="dropOverlay" class="drop-overlay hidden">
+    <div class="drop-overlay-inner">Upuść pliki PDF, aby dodać do analizy</div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

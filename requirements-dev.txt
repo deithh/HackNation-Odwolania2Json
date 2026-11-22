@@ -1,0 +1,5 @@
+# Optional dependencies for F1 benchmarking (rapidfuzz), tests (pytest) and GEPA prompt optimization (optimize-type)
+-r requirements.txt
+gepa>=0.1.4
+rapidfuzz>=3.10.0,<4.0.0
+pytest>=8.0.0
